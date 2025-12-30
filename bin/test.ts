@@ -50,15 +50,27 @@ async function testValidation() {
       },
       {
         type: 'confirm',
-        name: 'enableAccuracyCheck',
-        message: 'Enable accuracy checking?',
+        name: 'enableContextValidation',
+        message: 'Enable context validation?',
         default: true
       },
       {
         type: 'confirm',
+        name: 'useLLMJudge',
+        message: 'Use LLM-as-Judge for context validation (requires API key)?',
+        default: false
+      },
+      {
+        type: 'confirm',
+        name: 'enableAccuracyCheck',
+        message: 'Enable accuracy checking (requires API key)?',
+        default: false
+      },
+      {
+        type: 'confirm',
         name: 'enableHallucinationDetection',
-        message: 'Enable hallucination detection?',
-        default: true
+        message: 'Enable hallucination detection (requires API key)?',
+        default: false
       },
       {
         type: 'list',
@@ -93,6 +105,8 @@ async function testValidation() {
       llmProvider: configAnswers.provider,
       confidenceThreshold: configAnswers.threshold,
       enableQueryClassification: configAnswers.enableQueryClassification,
+      enableContextValidation: configAnswers.enableContextValidation,
+      useLLMJudge: configAnswers.useLLMJudge,
       enableAccuracyCheck: configAnswers.enableAccuracyCheck,
       enableHallucinationDetection: configAnswers.enableHallucinationDetection
     };

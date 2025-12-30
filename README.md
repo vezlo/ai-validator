@@ -9,13 +9,15 @@
 
 AI Validator helps you ensure the quality and reliability of AI-generated responses by:
 
+- ✅ **LLM-as-Judge Context Validation** - Semantic accuracy checking using OpenAI/Claude
+- ✅ **Developer Mode** - Strict code grounding validation for technical queries
 - ✅ **Automated Accuracy Checking** - Verify AI responses against source documents
 - ✅ **Hallucination Prevention** - Detect when AI invents information not in sources
 - ✅ **Confidence Scoring** - Get reliability scores for every response
 - ✅ **Query Classification** - Skip validation for greetings, typos, and small talk
 - ✅ **Multi-LLM Support** - Works with OpenAI and Claude
 
-Perfect for RAG systems, knowledge bases, and any application where AI response quality matters.
+Perfect for RAG systems, knowledge bases, codebase Q&A, and any application where AI response quality matters.
 
 ## 🚀 Quick Start
 
@@ -117,15 +119,18 @@ const validator = new AIValidator({
   // LLM Provider (required)
   llmProvider: 'openai', // 'openai' or 'claude'
   
-  // Model Selection (optional - you can specify any model from the provider)
-  openaiModel: 'gpt-4o',  // Any OpenAI model: gpt-4o, gpt-4o-mini, gpt-4, etc.
-  claudeModel: 'claude-sonnet-4-5-20250929',  // Any Claude model
+  // Model Selection (optional)
+  openaiModel: 'gpt-4o-mini',  // Default for LLM Judge
+  claudeModel: 'claude-3-haiku-20240307',  // Default for LLM Judge
   
   // Validation Settings (optional)
-  confidenceThreshold: 0.7,           // 0.0 - 1.0 (default: 0.7)
-  enableQueryClassification: true,     // Skip validation for greetings/typos
-  enableAccuracyCheck: true,          // LLM-based accuracy checking
-  enableHallucinationDetection: true  // LLM-based hallucination detection
+  confidenceThreshold: 0.7,              // 0.0 - 1.0 (default: 0.7)
+  enableQueryClassification: true,       // Skip validation for greetings/typos
+  enableContextValidation: true,         // Context relevance validation (default: true)
+  useLLMJudge: true,                    // Use LLM-as-Judge for context (default: false)
+  developerMode: false,                  // Strict code grounding mode (default: false)
+  enableAccuracyCheck: false,           // LLM-based accuracy checking (default: false)
+  enableHallucinationDetection: false   // LLM-based hallucination detection (default: false)
 });
 ```
 

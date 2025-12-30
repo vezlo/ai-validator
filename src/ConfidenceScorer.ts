@@ -5,15 +5,47 @@ export class ConfidenceScorer {
     accuracyResult: AccuracyResult,
     contextResult: ContextResult,
     hallucinationResult: HallucinationResult,
-    sources: Source[]
+    sources: Source[],
+    enabledChecks?: { accuracy: boolean; hallucination: boolean }
   ): ConfidenceResult {
-    // Define weights for different factors
-    const weights = {
-      accuracy: 0.35,
-      context: 0.25,
-      hallucination: 0.30,
-      sourceQuality: 0.10
-    };
+    // Dynamic weights based on enabled checks
+    const accuracyEnabled = enabledChecks?.accuracy ?? true;
+    const hallucinationEnabled = enabledChecks?.hallucination ?? true;
+    
+    let weights;
+    if (!accuracyEnabled && !hallucinationEnabled) {
+      // Only context and source quality available
+      weights = {
+        accuracy: 0,
+        context: 0.60,
+        hallucination: 0,
+        sourceQuality: 0.40
+      };
+    } else if (!accuracyEnabled) {
+      // No accuracy check
+      weights = {
+        accuracy: 0,
+        context: 0.35,
+        hallucination: 0.45,
+        sourceQuality: 0.20
+      };
+    } else if (!hallucinationEnabled) {
+      // No hallucination check
+      weights = {
+        accuracy: 0.50,
+        context: 0.30,
+        hallucination: 0,
+        sourceQuality: 0.20
+      };
+    } else {
+      // All checks enabled (default)
+      weights = {
+        accuracy: 0.35,
+        context: 0.25,
+        hallucination: 0.30,
+        sourceQuality: 0.10
+      };
+    }
 
     // Calculate individual scores
     const accuracyScore = accuracyResult.verification_rate;
@@ -28,10 +60,15 @@ export class ConfidenceScorer {
       (hallucinationScore * weights.hallucination) +
       (sourceQualityScore * weights.sourceQuality);
 
+    // Build log message showing only active metrics
+    const activeMetrics: string[] = [];
+    if (weights.accuracy > 0) activeMetrics.push(`Accuracy: ${(accuracyScore * 100).toFixed(0)}%`);
+    if (weights.context > 0) activeMetrics.push(`Context: ${(contextScore * 100).toFixed(0)}%`);
+    if (weights.hallucination > 0) activeMetrics.push(`Grounding: ${(hallucinationScore * 100).toFixed(0)}%`);
+    if (weights.sourceQuality > 0) activeMetrics.push(`Source Quality: ${(sourceQualityScore * 100).toFixed(0)}%`);
+
     console.log('→ Confidence Score:', (confidenceScore * 100).toFixed(1) + '%',
-                '(Accuracy:', (accuracyScore * 100).toFixed(0) + '%,',
-                'Context:', (contextScore * 100).toFixed(0) + '%,',
-                'Hallucination:', (hallucinationScore * 100).toFixed(0) + '%)\n');
+                `(${activeMetrics.join(', ')})\n`);
 
     // Determine confidence level
     let level: 'high' | 'medium' | 'low';

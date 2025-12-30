@@ -3,6 +3,7 @@ import { QueryClassifier } from './QueryClassifier';
 import { AccuracyChecker } from './AccuracyChecker';
 import { HallucinationDetector } from './HallucinationDetector';
 import { ConfidenceScorer } from './ConfidenceScorer';
+import { ContextValidator } from './ContextValidator';
 
 export class AIValidator {
   private config: AIValidatorConfig;
@@ -10,16 +11,20 @@ export class AIValidator {
   private accuracyChecker: AccuracyChecker;
   private hallucinationDetector: HallucinationDetector;
   private confidenceScorer: ConfidenceScorer;
+  private contextValidator: ContextValidator;
 
   constructor(config: AIValidatorConfig) {
     // Set defaults for optional config
     this.config = {
       confidenceThreshold: 0.7,
       enableQueryClassification: true,
-      enableAccuracyCheck: true,
-      enableHallucinationDetection: true,
-      openaiModel: 'gpt-4o',
-      claudeModel: 'claude-sonnet-4-5-20250929',
+      enableAccuracyCheck: false,
+      enableHallucinationDetection: false,
+      enableContextValidation: true,
+      useLLMJudge: false,
+      developerMode: false,
+      openaiModel: 'gpt-4o-mini',
+      claudeModel: 'claude-3-haiku-20240307',
       ...config
     };
 
@@ -31,6 +36,14 @@ export class AIValidator {
     this.accuracyChecker = new AccuracyChecker(this.config.openaiApiKey, this.config.claudeApiKey);
     this.hallucinationDetector = new HallucinationDetector(this.config.openaiApiKey, this.config.claudeApiKey);
     this.confidenceScorer = new ConfidenceScorer();
+    this.contextValidator = new ContextValidator(
+      this.config.openaiApiKey,
+      this.config.claudeApiKey,
+      this.config.useLLMJudge,
+      this.config.developerMode || false,
+      this.config.openaiModel,
+      this.config.claudeModel
+    );
   }
 
   async validate(input: ValidationInput): Promise<ValidationResult> {
@@ -59,7 +72,9 @@ export class AIValidator {
           this.accuracyChecker.checkAccuracy(input.response, input.sources, this.config.llmProvider, this.getModel()) :
           Promise.resolve({ verified: true, verification_rate: 1.0 }),
         
-        this.calculateContextRelevance(input.query, input.response, input.sources),
+        this.config.enableContextValidation ?
+          this.contextValidator.validateContext(input.query, input.response, input.sources) :
+          Promise.resolve({ source_relevance: 1.0, source_usage_rate: 1.0, valid: true }),
         
         this.config.enableHallucinationDetection ?
           this.hallucinationDetector.detectHallucination(input.response, input.sources, this.config.llmProvider, this.getModel()) :
@@ -71,7 +86,11 @@ export class AIValidator {
         accuracyResult,
         contextResult,
         hallucinationResult,
-        input.sources
+        input.sources,
+        {
+          accuracy: this.config.enableAccuracyCheck || false,
+          hallucination: this.config.enableHallucinationDetection || false
+        }
       );
 
       // Step 4: Generate warnings
@@ -102,65 +121,23 @@ export class AIValidator {
   }
 
   private validateConfig(): void {
-    if (!this.config.openaiApiKey && !this.config.claudeApiKey) {
-      throw new Error('At least one API key (OpenAI or Claude) must be provided');
+    // API keys are optional - validators will use fallback methods if not provided
+    if (this.config.useLLMJudge && !this.config.openaiApiKey && !this.config.claudeApiKey) {
+      console.warn('LLM Judge enabled but no API key provided. Falling back to rule-based validation.');
+      this.config.useLLMJudge = false;
     }
 
-    if (this.config.llmProvider === 'openai' && !this.config.openaiApiKey) {
-      throw new Error('OpenAI API key is required when using OpenAI provider');
+    if (this.config.enableAccuracyCheck && !this.config.openaiApiKey && !this.config.claudeApiKey) {
+      console.warn('Accuracy check enabled but no API key provided. Disabling accuracy check.');
+      this.config.enableAccuracyCheck = false;
     }
 
-    if (this.config.llmProvider === 'claude' && !this.config.claudeApiKey) {
-      throw new Error('Claude API key is required when using Claude provider');
+    if (this.config.enableHallucinationDetection && !this.config.openaiApiKey && !this.config.claudeApiKey) {
+      console.warn('Hallucination detection enabled but no API key provided. Disabling hallucination detection.');
+      this.config.enableHallucinationDetection = false;
     }
   }
 
-  private async calculateContextRelevance(query: string, response: string, sources: any[]): Promise<any> {
-    // Simple context relevance calculation
-    // In a more sophisticated implementation, this could use embeddings
-    
-    if (sources.length === 0) {
-      return {
-        source_relevance: 0,
-        source_usage_rate: 0,
-        valid: false
-      };
-    }
-
-    // Context relevance: Check if response is grounded in sources
-    const cleanResponse = response.toLowerCase().replace(/[^\w\s]/g, '');
-    const sourceContent = sources.map(s => s.content.toLowerCase().replace(/[^\w\s]/g, '')).join(' ');
-    const responseWords = cleanResponse.split(/\s+/).filter(word => word.length > 3);
-    const sourceWords = sourceContent.split(/\s+/).filter(word => word.length > 3);
-    
-    // Check how many response words appear in sources
-    let wordsInSource = 0;
-    for (const word of responseWords) {
-      if (sourceWords.includes(word)) {
-        wordsInSource++;
-      }
-    }
-
-    // Source relevance: % of response words that appear in sources
-    const sourceRelevance = responseWords.length > 0 ? wordsInSource / responseWords.length : 0.5;
-    
-    // Source usage rate: Check if query keywords appear in response
-    const cleanQuery = query.toLowerCase().replace(/[^\w\s]/g, '');
-    const queryWords = cleanQuery.split(/\s+/).filter(word => word.length > 2);
-    let queryWordsInResponse = 0;
-    for (const word of queryWords) {
-      if (responseWords.includes(word)) {
-        queryWordsInResponse++;
-      }
-    }
-    const sourceUsageRate = queryWords.length > 0 ? queryWordsInResponse / queryWords.length : 0.5;
-
-    return {
-      source_relevance: Math.min(sourceRelevance, 1.0),
-      source_usage_rate: sourceUsageRate,
-      valid: sourceRelevance > 0.3
-    };
-  }
 
   private getModel(): string {
     if (this.config.llmProvider === 'openai') {
