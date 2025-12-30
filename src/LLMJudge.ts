@@ -7,8 +7,16 @@ export class LLMJudge {
   private anthropic?: Anthropic;
   private provider: 'openai' | 'claude';
   private developerMode: boolean;
+  private openaiModel: string;
+  private claudeModel: string;
 
-  constructor(openaiApiKey?: string, claudeApiKey?: string, developerMode: boolean = false) {
+  constructor(
+    openaiApiKey?: string, 
+    claudeApiKey?: string, 
+    developerMode: boolean = false,
+    openaiModel: string = 'gpt-4o-mini',
+    claudeModel: string = 'claude-3-haiku-20240307'
+  ) {
     if (openaiApiKey) {
       this.openai = new OpenAI({ apiKey: openaiApiKey });
       this.provider = 'openai';
@@ -19,6 +27,8 @@ export class LLMJudge {
       throw new Error('At least one API key (OpenAI or Claude) must be provided for LLM Judge');
     }
     this.developerMode = developerMode;
+    this.openaiModel = openaiModel;
+    this.claudeModel = claudeModel;
   }
 
   async validateContext(query: string, response: string, sources: Source[]): Promise<ContextResult> {
@@ -96,7 +106,7 @@ Respond with ONLY the JSON, no other text.`;
     if (!this.openai) throw new Error('OpenAI not initialized');
 
     const response = await this.openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: this.openaiModel,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.1,
       max_tokens: 200
@@ -109,7 +119,7 @@ Respond with ONLY the JSON, no other text.`;
     if (!this.anthropic) throw new Error('Claude not initialized');
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-3-haiku-20240307',
+      model: this.claudeModel,
       max_tokens: 200,
       temperature: 0.1,
       messages: [{ role: 'user', content: prompt }]

@@ -5,11 +5,18 @@ export class ContextValidator {
   private llmJudge?: LLMJudge;
   private useLLMJudge: boolean;
 
-  constructor(openaiApiKey?: string, claudeApiKey?: string, useLLMJudge: boolean = false, developerMode: boolean = false) {
+  constructor(
+    openaiApiKey?: string, 
+    claudeApiKey?: string, 
+    useLLMJudge: boolean = false, 
+    developerMode: boolean = false,
+    openaiModel?: string,
+    claudeModel?: string
+  ) {
     this.useLLMJudge = useLLMJudge && (!!openaiApiKey || !!claudeApiKey);
     
     if (this.useLLMJudge) {
-      this.llmJudge = new LLMJudge(openaiApiKey, claudeApiKey, developerMode);
+      this.llmJudge = new LLMJudge(openaiApiKey, claudeApiKey, developerMode, openaiModel, claudeModel);
     }
   }
 

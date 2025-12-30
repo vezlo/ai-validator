@@ -40,7 +40,9 @@ export class AIValidator {
       this.config.openaiApiKey,
       this.config.claudeApiKey,
       this.config.useLLMJudge,
-      this.config.developerMode || false
+      this.config.developerMode || false,
+      this.config.openaiModel,
+      this.config.claudeModel
     );
   }
 
