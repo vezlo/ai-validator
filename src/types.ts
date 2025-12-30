@@ -3,6 +3,7 @@ export interface Source {
   title?: string;
   url?: string;
   id?: string;
+  embedding?: number[];
 }
 
 export interface ValidationInput {
@@ -59,6 +60,9 @@ export interface AIValidatorConfig {
   enableQueryClassification?: boolean;
   enableAccuracyCheck?: boolean;
   enableHallucinationDetection?: boolean;
+  enableContextValidation?: boolean;
+  useLLMJudge?: boolean;
+  developerMode?: boolean;
   openaiModel?: string;
   claudeModel?: string;
 }
